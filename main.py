@@ -19,8 +19,6 @@ logger = logging.getLogger("AWS S3 Single Downloader")
 logger.setLevel("INFO")
 
 # AWS Keys
-ACCESS_KEY_ID = "AKIAVIA6CF6QQ5QLXSOU"
-SECRET_KEY = "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"
 BUCKET_NAME = "kamleshtest1"
 
 S3_CLIENT = boto3.client('s3')
