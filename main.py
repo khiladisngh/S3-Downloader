@@ -1,14 +1,10 @@
 import os
-import sys
 import time
 import logging
-import threading
-from turtle import down
 
 import boto3
 
 from botocore.exceptions import ClientError
-from boto3.session import Session
 
 logging.basicConfig(
     level=logging.INFO,
@@ -23,6 +19,8 @@ BUCKET_NAME = "kamleshtest1"
 
 S3_CLIENT = boto3.client('s3')
 S3_RESOURCE = boto3.resource('s3')
+
+DOWNLOAD_DIR = "directory_path"  # Change this
 
 
 def create_bucket(bucket_name, region=None):
@@ -73,6 +71,8 @@ def download_single_file(file_name, bucket_name, object_name=None, directory=Non
 
     # Set directory if not None.
     if directory is not None:
+        if not os.path.exists(directory):
+            os.makedirs(directory)
         file_path = f"{directory}/{file_name}"
     else:
         file_path = f"{file_name}"
@@ -101,8 +101,8 @@ def download_all_files(prefix, local, bucket, client=S3_CLIENT):
     dirs = []
     next_token = ''
     base_kwargs = {
-        'Bucket':bucket,
-        'Prefix':prefix,
+        'Bucket': bucket,
+        'Prefix': prefix,
     }
     while next_token is not None:
         kwargs = base_kwargs.copy()
@@ -118,14 +118,14 @@ def download_all_files(prefix, local, bucket, client=S3_CLIENT):
                 dirs.append(k)
         next_token = results.get('NextContinuationToken')
     for d in dirs:
-        dest_pathname = os.path.join(local, d)
-        if not os.path.exists(os.path.dirname(dest_pathname)):
-            os.makedirs(os.path.dirname(dest_pathname))
+        destination_pathname = os.path.join(local, d)
+        if not os.path.exists(os.path.dirname(destination_pathname)):
+            os.makedirs(os.path.dirname(destination_pathname))
     for k in keys:
-        dest_pathname = os.path.join(local, k)
-        if not os.path.exists(os.path.dirname(dest_pathname)):
-            os.makedirs(os.path.dirname(dest_pathname))
-        client.download_file(bucket, k, dest_pathname)
+        destination_pathname = os.path.join(local, k)
+        if not os.path.exists(os.path.dirname(destination_pathname)):
+            os.makedirs(os.path.dirname(destination_pathname))
+        client.download_file(bucket, k, destination_pathname)
         logger.info(f"downloaded - {k}")
 
 
@@ -133,15 +133,18 @@ def download_all_files(prefix, local, bucket, client=S3_CLIENT):
 logger.info("Downloading...")
 start_timer = time.perf_counter()
 
-all_file_objects = get_all_bucket_objects(BUCKET_NAME)
-all_file_names = [file.key for file in all_file_objects]
+log_files = {}
+for file in get_all_bucket_objects(BUCKET_NAME):
+    if file.key.startswith("qrlogging"):
+        log_files[file.key] = file.key
 
-download_all_files(
-    prefix="",
-    local="downloads",
-    bucket=BUCKET_NAME,
-)
-
+for obj, file in log_files.items():
+    download_single_file(
+        file_name=file,
+        object_name=obj,
+        bucket_name=BUCKET_NAME,
+        directory=DOWNLOAD_DIR
+    )
 
 end_timer = time.perf_counter()
 logger.info(f"Downloaded in {end_timer - start_timer:0.2f} seconds.")
